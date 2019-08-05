@@ -12,9 +12,10 @@ import win32file
 import win32con  # global constant definitions for interfacing with win32file
 import tkinter as tk
 import threading
+import queue
 import datetime as dt
 # import local modules
-import fileprocess
+import FileProcess
 
 
 # Set test path here
@@ -24,8 +25,11 @@ TEST_PATH = r'C:\Users\Tanat\Desktop\test'
 FILE_LIST_DIRECTORY = 0x0001  # equals to 1 in base-10
 # setting flag for thread worker
 is_running = True
-# create container to temporarily record changes
-temp_log = list()
+# set queue for watcher
+queue_log = queue.Queue(maxsize=20)
+# set queue for processing
+# processing thread could take a long time, so we need larger buffer
+queue_process = queue.Queue(maxsize=200)
 
 
 class DirectoryWatch:
@@ -38,19 +42,23 @@ class DirectoryWatch:
     def __init__(self, watch_path=TEST_PATH):
         self.watch_path = watch_path
         # Create an object to return a handle that can be used to access the folder.
-        self.hDir = win32file.CreateFile(fileName=self.watch_path,
-                                         desiredAccess=FILE_LIST_DIRECTORY,
-                                         shareMode=win32con.FILE_SHARE_READ |
-                                                   win32con.FILE_SHARE_WRITE |
-                                                   win32con.FILE_SHARE_DELETE,
-                                         attributes=None,
-                                         CreationDisposition=win32con.OPEN_EXISTING,
-                                         flagsAndAttributes=win32con.FILE_FLAG_BACKUP_SEMANTICS,
-                                         hTemplateFile=None
+        self.hDir = win32file.CreateFile(self.watch_path,
+                                         FILE_LIST_DIRECTORY,
+                                         win32con.FILE_SHARE_READ |
+                                         win32con.FILE_SHARE_WRITE |
+                                         win32con.FILE_SHARE_DELETE,
+                                         None,
+                                         win32con.OPEN_EXISTING,
+                                         win32con.FILE_FLAG_BACKUP_SEMANTICS,
+                                         None
                                          )
-        # Set up the thread
+        # Set up the thread for watcher
         thread_watcher = threading.Thread(target=self.watcher_thread)
+        thread_watcher.daemon = True  # daemon thread dies when main thread exits, to combat with blocking thread
         thread_watcher.start()
+        # Set up the thread for passing full_filename as argument
+        thread_fileprocess = threading.Thread(target=file_process)
+        thread_fileprocess.start()
 
     def watcher_thread(self):
         """
@@ -60,6 +68,8 @@ class DirectoryWatch:
         a flag to indicate whether to watch subtrees and a filter of what changes to notify. For larger batch
         processing, the buffer size may need to be increased to handle the change information.
         """
+        global queue_log
+        global is_running
         # Dictionary for different action types
         ACTIONS = {
             1: "Created",
@@ -68,31 +78,33 @@ class DirectoryWatch:
             4: "Renamed from something",
             5: "Renamed to something"
         }
-        while is_running:
+        while is_running:  # This doesn't really work because ReadDirectoryChangesW is blocking
             # retrieve information describing the changes occurring within a directory
-            results = win32file.ReadDirectoryChangesW(handle=self.hDir,
-                                                      size=1024,
-                                                      bWatchSubtree=True,
-                                                      dwNotifyFilter=win32con.FILE_NOTIFY_CHANGE_FILE_NAME |
-                                                                     win32con.FILE_NOTIFY_CHANGE_DIR_NAME |
-                                                                     win32con.FILE_NOTIFY_CHANGE_ATTRIBUTES |
-                                                                     win32con.FILE_NOTIFY_CHANGE_SIZE |
-                                                                     win32con.FILE_NOTIFY_CHANGE_LAST_WRITE |
-                                                                     win32con.FILE_NOTIFY_CHANGE_SECURITY,
-                                                      overlapped=None
-                                                      #, None <= here is a legacy code that I cannot find the
-                                                      # formal parameter name for, so I'm storing here in case
-                                                      # it is important.
+            results = win32file.ReadDirectoryChangesW(self.hDir,
+                                                      1024,
+                                                      True,
+                                                      win32con.FILE_NOTIFY_CHANGE_FILE_NAME |
+                                                      win32con.FILE_NOTIFY_CHANGE_DIR_NAME |
+                                                      win32con.FILE_NOTIFY_CHANGE_ATTRIBUTES |
+                                                      win32con.FILE_NOTIFY_CHANGE_SIZE |
+                                                      win32con.FILE_NOTIFY_CHANGE_LAST_WRITE |
+                                                      win32con.FILE_NOTIFY_CHANGE_SECURITY,
+                                                      None,
+                                                      None
                                                       )
             # reading the changes and initiate actions
             for action, file in results:
                 # get path of file with changes
                 full_filename = os.path.join(self.watch_path, file)
                 # append the list of CREATED files to another module for server upload
-                temp_log.append((full_filename, ACTIONS.get(action, "Unknown")))
-            # send the list of changes to GUI container
-            yield temp_log  # thread don't yield value, use queue instead
-        return None
+                queue_log.put((full_filename, ACTIONS.get(action, "Unknown")))
+                # pass the list of CREATED files to another module for server upload
+                if action == 1:  # if file is created
+                    queue_process.put(full_filename)  # send filename to processing queue
+
+        else:
+            print("END thread 1")
+            return
 
 
 class GuiPart(tk.Frame):
@@ -129,33 +141,20 @@ class GuiPart(tk.Frame):
         # This is the correct way to do default assignment on mutable object
         # because function declaration is processed only once, thus the updated
         # temp_log will not be recognized.
-        global temp_log
-        # looping over changes that happened since the last update
-        for change in temp_log:
-            # unpack tuple within the list
-            full_filename, action = change
-            # pass the list of CREATED files to another module for server upload
-            if action == 'Created':
-                # Set up the thread and passing full_filename as argument
-                thread_fileprocess = threading.Thread(target=fileprocess.file_process, args=(full_filename,))
-                thread_fileprocess.start()
-            # continue the process with updating display
-            self.update_label(full_filename, action)
-        # clear temporary log
-        temp_log.clear()
-        # loop itself after 250ms interval
-        self.update = root.after(250, mainframe.process_templog)
-
-    def end_command(self):
-        """
-        This is an exit command for both GUI and thread_watcher
-        """
-        # raises exit flag for thread
-        is_running = False
-        # cancel tk after
-        self.master.after_cancel(self.update)
-        # closes tk window
-        self.master.destroy()
+        global queue_log
+        while queue_log.qsize():
+            try:
+                log = queue_log.get()
+                # unpack tuple within the list
+                full_filename, action = log
+                # continue the process with updating display
+                self.update_label(full_filename, action)
+            except queue.Empty:
+                # just on general principles, although we don't
+                # expect this branch to be taken in this case
+                pass
+        # loop itself after 100ms interval
+        self.update = root.after(100, mainframe.process_templog)
 
     def update_label(self, full_filename: str, action: str):
         """
@@ -169,8 +168,8 @@ class GuiPart(tk.Frame):
         # get current displaying status
         text_list = self.textVar.get().split('\n')
         # create new line of status = date + filename + action
-        new_line = dt.datetime.now().strftime("%Y-%m-%d %H:%M") + "\t..." + \
-                   full_filename[len(full_filename) - 15:] + "  \t" + \
+        new_line = dt.datetime.now().strftime("%Y-%m-%d %H:%M") + "\t    ..." + \
+                   full_filename[len(full_filename) - 15:] + "       \t" + \
                    action
         # Replacing the oldest status over DISPLAY_LIMIT
         if len(text_list) >= DISPLAY_LIMIT:
@@ -183,12 +182,51 @@ class GuiPart(tk.Frame):
         # update text variable for label widget
         self.textVar.set(updated_text)
 
+    def end_command(self):
+        """
+        This is an exit command for both GUI and thread_watcher
+        """
+        import sys
+        global is_running
+        # raises exit flag for thread
+        is_running = False
+        # cancel tk after
+        self.master.after_cancel(self.update)
+        # closes tk window
+        self.master.destroy()
+        # exit program
+        exit()
+
+
+def file_process():
+    """
+    This function process files that are newly created.
+    """
+    global is_running
+    # while the program is running
+    while is_running:
+        # while there is a queue in queue_process
+        while queue_process.qsize():
+            try:
+                # retrieve full_filename (raw string literal) from queue_process
+                full_filename = queue_process.get()
+                # process the file with external module
+                FileProcess.file_process(full_filename)
+            except queue.Empty:
+                # just on general principles, although we don't
+                # expect this branch to be taken in this case
+                pass
+    else:
+        print('END thread 2')
+        return
+
 
 if __name__ == '__main__':
     root = tk.Tk()
     root.geometry("500x200")  # set default window geometry
     root.resizable(0, 0)  # prevent resizing in the x or y directions
     mainframe = GuiPart(root)  # initiate GUI
-    root.after(250, mainframe.process_templog)  # update GUI at 250ms intervals
+    watcher = DirectoryWatch(TEST_PATH)  # initialize DirectoryWatch
+    root.after(100, mainframe.process_templog)  # update GUI at 100ms intervals
     root.mainloop()
 

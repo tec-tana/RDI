@@ -13,6 +13,8 @@ import win32con  # global constant definitions for interfacing with win32file
 import tkinter as tk
 import threading
 import datetime as dt
+# import local modules
+import fileprocess
 
 
 # Set test path here
@@ -47,8 +49,8 @@ class DirectoryWatch:
                                          hTemplateFile=None
                                          )
         # Set up the thread
-        thread = threading.Thread(target=self.watcher_thread)
-        thread.start()
+        thread_watcher = threading.Thread(target=self.watcher_thread)
+        thread_watcher.start()
 
     def watcher_thread(self):
         """
@@ -88,12 +90,8 @@ class DirectoryWatch:
                 full_filename = os.path.join(self.watch_path, file)
                 # append the list of CREATED files to another module for server upload
                 temp_log.append((full_filename, ACTIONS.get(action, "Unknown")))
-                # yield the list of CREATED files to another module for server upload
-                yield full_filename, ACTIONS.get(action, "Unknown")
             # send the list of changes to GUI container
-            yield temp_log
-            # clear temporary log
-            temp_log.clear()
+            yield temp_log  # thread don't yield value, use queue instead
         return None
 
 
@@ -118,14 +116,13 @@ class GuiPart(tk.Frame):
         # button to end program
         tk.Button(self, text='Close', command=self.end_command).pack()
 
-    def update_label(self, log: list = None) -> None:
+    def process_templog(self):
         """
-        This function updates the status label on GUI.
+        This function process the incoming log when queue is available.
 
-        The input of the function is a global variable, thus
+        The one input of the function is a global variable, thus
         not required in the parameter.
 
-        :param log: list, temp_log by default
         :return: None
         """
         # set default parameter to temp_log
@@ -133,34 +130,26 @@ class GuiPart(tk.Frame):
         # because function declaration is processed only once, thus the updated
         # temp_log will not be recognized.
         global temp_log
-        if log == None:
-            log = temp_log
-        # set the number of lines that will be displayed
-        DISPLAY_LIMIT = 10
         # looping over changes that happened since the last update
-        for change in log:
+        for change in temp_log:
             # unpack tuple within the list
             full_filename, action = change
-            # get current displaying status
-            text_list = self.textVar.get().split('\n')
-            # create new line of status = date + filename + action
-            new_line = dt.datetime.now().strftime("%Y-%m-%d %H:%M") + "\t..." + \
-                       full_filename[len(full_filename) - 15:] + "  \t" + \
-                       action
-            # Replacing the oldest status over DISPLAY_LIMIT
-            if len(text_list) >= DISPLAY_LIMIT:
-                text_list = text_list[1:]  # Remove the oldest status
-                text_list.append(new_line)
-                updated_text = '\n'.join(text_list)
-            else:  # for when there are less than DISPLAY_LIMIT
-                text_list.append(new_line)
-                updated_text = '\n'.join(text_list)
-            # update text variable for label widget
-            self.textVar.set(updated_text)
+            # pass the list of CREATED files to another module for server upload
+            if action == 'Created':
+                # Set up the thread and passing full_filename as argument
+                thread_fileprocess = threading.Thread(target=fileprocess.file_process, args=(full_filename,))
+                thread_fileprocess.start()
+            # continue the process with updating display
+            self.update_label(full_filename, action)
+        # clear temporary log
+        temp_log.clear()
         # loop itself after 250ms interval
-        self.update = root.after(250, mainframe.update_label)
+        self.update = root.after(250, mainframe.process_templog)
 
     def end_command(self):
+        """
+        This is an exit command for both GUI and thread_watcher
+        """
         # raises exit flag for thread
         is_running = False
         # cancel tk after
@@ -168,12 +157,38 @@ class GuiPart(tk.Frame):
         # closes tk window
         self.master.destroy()
 
+    def update_label(self, full_filename: str, action: str):
+        """
+        This function updates the status label on GUI.
+
+        :param full_filename: raw string literal
+        :param action: string literal
+        """
+        # set the number of lines that will be displayed
+        DISPLAY_LIMIT = 10
+        # get current displaying status
+        text_list = self.textVar.get().split('\n')
+        # create new line of status = date + filename + action
+        new_line = dt.datetime.now().strftime("%Y-%m-%d %H:%M") + "\t..." + \
+                   full_filename[len(full_filename) - 15:] + "  \t" + \
+                   action
+        # Replacing the oldest status over DISPLAY_LIMIT
+        if len(text_list) >= DISPLAY_LIMIT:
+            text_list = text_list[1:]  # Remove the oldest status
+            text_list.append(new_line)
+            updated_text = '\n'.join(text_list)
+        else:  # for when there are less than DISPLAY_LIMIT
+            text_list.append(new_line)
+            updated_text = '\n'.join(text_list)
+        # update text variable for label widget
+        self.textVar.set(updated_text)
+
 
 if __name__ == '__main__':
     root = tk.Tk()
     root.geometry("500x200")  # set default window geometry
     root.resizable(0, 0)  # prevent resizing in the x or y directions
     mainframe = GuiPart(root)  # initiate GUI
-    root.after(250, mainframe.update_label)  # update GUI at 250ms intervals
+    root.after(250, mainframe.process_templog)  # update GUI at 250ms intervals
     root.mainloop()
 

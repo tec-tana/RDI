@@ -31,7 +31,7 @@ class DirectoryWatch:
     This class access a folder to look for changes and report back to main thread.
 
     Attributes:
-        WATCH_PATH (str): The folder path to watch.
+        watch_path (str): The folder path to watch.
     """
     def __init__(self, watch_path=TEST_PATH):
         self.watch_path = watch_path
@@ -99,7 +99,10 @@ class DirectoryWatch:
 
 class GuiPart(tk.Frame):
     """
-    This is a GUI to show changes found by watcher_thread
+    This is a GUI to show changes found by watcher_thread.
+
+    Attributes:
+        master (tk): A tk object as the mainframe for GuiPart frame to reside in.
     """
     def __init__(self, master):
         self.master = master
@@ -115,29 +118,46 @@ class GuiPart(tk.Frame):
         # button to end program
         tk.Button(self, text='Close', command=self.end_command).pack()
 
-    def update_label(self):
+    def update_label(self, log: list = None) -> None:
+        """
+        This function updates the status label on GUI.
+
+        The input of the function is a global variable, thus
+        not required in the parameter.
+
+        :param log: list, temp_log by default
+        :return: None
+        """
+        # set default parameter to temp_log
+        # This is the correct way to do default assignment on mutable object
+        # because function declaration is processed only once, thus the updated
+        # temp_log will not be recognized.
+        global temp_log
+        if log == None:
+            log = temp_log
         # set the number of lines that will be displayed
         DISPLAY_LIMIT = 10
         # looping over changes that happened since the last update
-        for change in temp_log:
+        for change in log:
             # unpack tuple within the list
             full_filename, action = change
             # get current displaying status
-            textList = self.textVar.get().split('\n')
+            text_list = self.textVar.get().split('\n')
             # create new line of status = date + filename + action
             new_line = dt.datetime.now().strftime("%Y-%m-%d %H:%M") + "\t..." + \
                        full_filename[len(full_filename) - 15:] + "  \t" + \
                        action
             # Replacing the oldest status over DISPLAY_LIMIT
-            if len(textList) >= DISPLAY_LIMIT:
-                textList = textList[1:]  # Remove the oldest status
-                textList.append(new_line)
-                updated_text = '\n'.join(textList)
+            if len(text_list) >= DISPLAY_LIMIT:
+                text_list = text_list[1:]  # Remove the oldest status
+                text_list.append(new_line)
+                updated_text = '\n'.join(text_list)
             else:  # for when there are less than DISPLAY_LIMIT
-                textList.append(new_line)
-                updated_text = '\n'.join(textList)
+                text_list.append(new_line)
+                updated_text = '\n'.join(text_list)
             # update text variable for label widget
             self.textVar.set(updated_text)
+        # loop itself after 250ms interval
         self.update = root.after(250, mainframe.update_label)
 
     def end_command(self):

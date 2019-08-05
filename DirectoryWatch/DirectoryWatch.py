@@ -22,6 +22,8 @@ TEST_PATH = r'C:\Users\Tanat\Desktop\test'
 FILE_LIST_DIRECTORY = 0x0001  # equals to 1 in base-10
 # setting flag for thread worker
 is_running = True
+# create container to temporarily record changes
+temp_log = list()
 
 
 class DirectoryWatch:
@@ -64,8 +66,6 @@ class DirectoryWatch:
             4: "Renamed from something",
             5: "Renamed to something"
         }
-        # create container to temporarily record changes
-        temp_log = list()
         while is_running:
             # retrieve information describing the changes occurring within a directory
             results = win32file.ReadDirectoryChangesW(handle=self.hDir,
@@ -94,44 +94,59 @@ class DirectoryWatch:
             yield temp_log
             # clear temporary log
             temp_log.clear()
+        return None
 
 
 class GuiPart(tk.Frame):
     """
     This is a GUI to show changes found by watcher_thread
     """
-    def __init__(self, master=None):
+    def __init__(self, master):
+        self.master = master
         # Set up the GUI
         tk.Frame.__init__(self, master)
         self.pack()
+        # create update-able container for status
         self.textVar = tk.StringVar()
+        # display title
         tk.Label(self, text="Directory Status (recent 10)", font='Arial 12 bold').pack()
+        # display status
         tk.Label(self, textvariable=self.textVar, justify='left', anchor='n').pack()
-        # tk.Button(master, text='Done', command=self.end_command).pack()
+        # button to end program
+        tk.Button(self, text='Close', command=self.end_command).pack()
 
     def update_label(self):
-        for action, file in results:
-            full_filename = os.path.join(self.watch_path, file)
-            textList = wndw.textVar.get().split('\n')
+        # set the number of lines that will be displayed
+        DISPLAY_LIMIT = 10
+        # looping over changes that happened since the last update
+        for change in temp_log:
+            # unpack tuple within the list
+            full_filename, action = change
+            # get current displaying status
+            textList = self.textVar.get().split('\n')
+            # create new line of status = date + filename + action
             new_line = dt.datetime.now().strftime("%Y-%m-%d %H:%M") + "\t..." + \
-                       str(full_filename[len(full_filename) - 15:]) + "  \t" + \
-                       str(ACTIONS.get(action, "Unknown"))
-            if action == 1:
-                yield full_filename
-            if len(textList) >= 10:
-                textList = textList[1:]
+                       full_filename[len(full_filename) - 15:] + "  \t" + \
+                       action
+            # Replacing the oldest status over DISPLAY_LIMIT
+            if len(textList) >= DISPLAY_LIMIT:
+                textList = textList[1:]  # Remove the oldest status
                 textList.append(new_line)
                 updated_text = '\n'.join(textList)
-            else:
+            else:  # for when there are less than DISPLAY_LIMIT
                 textList.append(new_line)
                 updated_text = '\n'.join(textList)
-            wndw.textVar.set(updated_text)
-        pass
+            # update text variable for label widget
+            self.textVar.set(updated_text)
+        self.update = root.after(250, mainframe.update_label)
 
-    @staticmethod
-    def end_command():
+    def end_command(self):
+        # raises exit flag for thread
         is_running = False
-        exit()
+        # cancel tk after
+        self.master.after_cancel(self.update)
+        # closes tk window
+        self.master.destroy()
 
 
 if __name__ == '__main__':

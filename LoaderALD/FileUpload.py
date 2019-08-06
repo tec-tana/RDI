@@ -1,3 +1,8 @@
+"""
+File Upload to MongoDB database
+
+Credit to https://gist.github.com/mprajwala/849b5909f5b881c8ce6a
+"""
 import os
 import pandas as pd
 import pymongo

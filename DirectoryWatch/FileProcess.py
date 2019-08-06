@@ -6,9 +6,9 @@ File Processing
 3. Generate dataframe based on this initial file set. Record complete set of dataframe.
 4. If files are updated, update appropriate dataframe.
 """
-
 import pandas as pd
 import FileUpload
+import DataDiagnostics
 
 
 def file_process(file_path: str):
@@ -40,6 +40,7 @@ def file_validate(file_path: str):
     :param file_path: raw string literal
     :return bool: True = eligible for upload
     """
+    DataDiagnostics.__main__()
     return
 
 def file_update(file_path: str):

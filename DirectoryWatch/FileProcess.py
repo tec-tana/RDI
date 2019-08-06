@@ -11,14 +11,15 @@ import FileUpload
 import DataDiagnostics
 
 
-def file_process(file_path: str):
+def file_process(file_path: str, action: int):
     """
     This function process the file then upload.
 
     :param file_path: raw string literal
+    :param action: int literal, 1=> created, 3=>updated
     :return:
     """
-    print(file_path)
+    print(file_path, action)
     return
 
 

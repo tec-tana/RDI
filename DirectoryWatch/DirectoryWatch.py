@@ -127,6 +127,8 @@ class GuiPart(tk.Frame):
         tk.Label(self, textvariable=self.textVar, justify='left', anchor='n').pack()
         # button to end program
         tk.Button(self, text='Close', command=self.end_command).pack()
+        # execute end_command upon window delete
+        self.master.protocol("WM_DELETE_WINDOW", self.end_command)
 
     def process_templog(self):
         """

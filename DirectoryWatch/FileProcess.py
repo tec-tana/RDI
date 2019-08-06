@@ -8,41 +8,44 @@ File Processing
 """
 
 import pandas as pd
+import FileUpload
 
-def file_process(full_filename: str):
+
+def file_process(file_path: str):
     """
     This function process the file then upload.
 
-    :param full_filename: raw string literal
+    :param file_path: raw string literal
     :return:
     """
-    print(full_filename)
+    print(file_path)
     return
 
 
-def file_upload(full_filename: str):
+def file_upload(file_path: str):
     """
     This function upload given files to database.
 
-    :param full_filename: raw string literal
+    :param file_path: raw string literal
     :return:
     """
+    FileUpload.import_content(file_path)
     return
 
 
-def file_validate(full_filename: str):
+def file_validate(file_path: str):
     """
     This function validates file before upload.
 
-    :param full_filename: raw string literal
+    :param file_path: raw string literal
     :return bool: True = eligible for upload
     """
     return
 
-def file_update(full_filename: str):
+def file_update(file_path: str):
     """
     This function updates the values in dataframe appropriately
 
-    :param full_filename: raw string literal
+    :param file_path: raw string literal
     """
     return

@@ -8,8 +8,8 @@ File Processing
 5. Delete merged files in original folder.
 """
 import pandas as pd
-# import FileUpload
-# import DataDiagnostics
+# from DirectoryWorker.FileWorker.ALD import FileUpload
+# from DirectoryWorker.FileWorker.ALD import DataDiagnostics
 
 
 class FileProcess:

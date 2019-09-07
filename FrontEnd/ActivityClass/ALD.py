@@ -1,22 +1,28 @@
 import sys
 from PyQt5.QtCore import QDateTime, Qt, QTimer
+from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (QApplication, QCheckBox, QComboBox, QDateTimeEdit,
         QDial, QDialog, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit,
         QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
         QSlider, QSpinBox, QStyleFactory, QFileDialog, QTableWidget, QTabWidget, QTextEdit,
-        QVBoxLayout, QWidget, QStyleFactory)
+        QVBoxLayout, QWidget, QStyleFactory, QMainWindow)
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 import matplotlib.pyplot as plt
 import pandas as pd
-import numpy as np
 
 
-class ConfigGallery(QDialog):
+class ConfigGallery(QMainWindow):
     def __init__(self, parent=None):
         super(ConfigGallery, self).__init__(parent)
         self.setMinimumSize(2000, 1500)
+        # self.setGeometry(50, 50, 500, 300)
+        # self.setWindowTitle("PyQT tuts!")
+        self.setWindowIcon(QIcon('pythonlogo.png'))
+        self.InitUI()
+        self.show()
 
+    def InitUI(self):
         # Create widgets
         self.create_topLayout()
         self.create_widget_browser()
@@ -35,8 +41,6 @@ class ConfigGallery(QDialog):
         mainLayout.setColumnStretch(0, 1)  # set column 0 stretch factor
         mainLayout.setColumnStretch(1, 1)  # set column 1 stretch factor
         self.setLayout(mainLayout)
-
-        self.setWindowTitle("ALD Sample Manager")
 
     def create_topLayout(self):
         self.equipment_type_combo = QComboBox()
@@ -244,10 +248,11 @@ class ConfigGallery(QDialog):
         except AttributeError:  # if the slider is moved before plot is generated
             pass
 
-
+'''
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     app.setStyle(QStyleFactory.create('Fusion'))
     ex = ConfigGallery()
     ex.show()
     sys.exit(app.exec_())
+'''

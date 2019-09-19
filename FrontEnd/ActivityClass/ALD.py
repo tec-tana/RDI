@@ -248,11 +248,10 @@ class ConfigGallery(QMainWindow):
         except AttributeError:  # if the slider is moved before plot is generated
             pass
 
-'''
+
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     app.setStyle(QStyleFactory.create('Fusion'))
     ex = ConfigGallery()
     ex.show()
     sys.exit(app.exec_())
-'''

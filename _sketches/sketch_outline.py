@@ -9,10 +9,12 @@ from PyQt5.QtWidgets import (QPushButton, QDialog, QTreeWidget,
                              QScrollArea, QSizePolicy, QDockWidget,
                              QComboBox, QSplitter, QGroupBox,
                              QFormLayout, QSpinBox, QButtonGroup,
-                             QMessageBox, QGridLayout, QTabWidget)
+                             QMessageBox, QGridLayout, QTabWidget,
+                             QMenu, QCheckBox, )
 from PyQt5.QtGui import (QIcon, QColor, QDrag, QPixmap, QPainter, QCursor, )
 from PyQt5.QtCore import (pyqtSlot, Qt, QParallelAnimationGroup, QMimeData,
                           QPropertyAnimation, QAbstractAnimation, )
+
 
 # Level 1
 class MainWindow(QMainWindow):
@@ -91,14 +93,15 @@ class CentralWidget(QWidget):
             unless the widget already has a minimum size.
             https://doc.qt.io/qt-5/qlayout.html
         '''
-        self.splitter = QSplitter(Qt.Horizontal)
-        self.splitter.setChildrenCollapsible(False)
+        # self.splitter = QSplitter(Qt.Horizontal)  # if want to set as adjustable UI
+        # self.splitter.setChildrenCollapsible(False)
 
         # Widget 1: Side Bar
         self.sidebarwidget = SidebarWidget()
 
         # Widget 2: Stacked Pages
         self.stackpages = QStackedWidget()
+        self.stackpages.setStyleSheet("background-color: white;")
         page1 = PageWidget_Login()
         page2 = PageWidget_RcpMngr()
         page3 = PageWidget_Analysis()
@@ -108,11 +111,13 @@ class CentralWidget(QWidget):
         self.stackpages.addWidget(page3)
         self.stackpages.addWidget(page4)
 
-        self.splitter.addWidget(self.sidebarwidget)
-        self.splitter.addWidget(self.stackpages)
-        self.splitter.setMinimumWidth(50)
-        self.splitter.setSizes([100, 1000])
-        self.main_layout.addWidget(self.splitter)
+        # self.splitter.addWidget(self.sidebarwidget)
+        # self.splitter.addWidget(self.stackpages)
+        # self.splitter.setMinimumWidth(50)
+        # self.splitter.setSizes([100, 1000])
+        self.main_layout.addWidget(self.sidebarwidget)
+        self.main_layout.addWidget(self.stackpages)
+        # self.main_layout.addWidget(self.splitter)
         self.setLayout(self.main_layout)
 
 
@@ -142,6 +147,7 @@ class SidebarWidget(QWidget):
 
         self.main_layout.addWidget(self.filebrowser)
         self.main_layout.addWidget(self.pagetoggle)
+        self.main_layout.addStretch(1)
         self.setLayout(self.main_layout)
 
 
@@ -175,13 +181,13 @@ class PageTogglerWidget(QWidget):
 
         # Widget 1: Page Toggle
         self.button_Login = QPushButton('Log-in', self)
-        self.button_Login.setFixedSize(350, 150)
+        self.button_Login.setFixedSize(350, 100)
         self.button_RcpMngr = QPushButton('Recipe Manager', self)
-        self.button_RcpMngr.setFixedSize(350, 150)
+        self.button_RcpMngr.setFixedSize(350, 100)
         self.button_Analysis = QPushButton('Data Viewer', self)
-        self.button_Analysis.setFixedSize(350, 150)
+        self.button_Analysis.setFixedSize(350, 100)
         self.button_ML = QPushButton('ML Study', self)
-        self.button_ML.setFixedSize(350, 150)
+        self.button_ML.setFixedSize(350, 100)
 
         # Group button to manage states
         self.btn_grp = QButtonGroup()
@@ -197,6 +203,7 @@ class PageTogglerWidget(QWidget):
         layout_toggle.addWidget(self.button_RcpMngr)
         layout_toggle.addWidget(self.button_Analysis)
         layout_toggle.addWidget(self.button_ML)
+        layout_toggle.addStretch(1)
         self.setLayout(layout_toggle)
 
     def toggle(self, btn):
@@ -265,6 +272,7 @@ class PageWidget_RcpMngr(QWidget):
 
         # Widget 1: Tab widgets
         self.tab = QTabWidget()
+        self.tab.setStyleSheet("background-color: none;")
         tab1 = TabWidget_ApplyTemplate()
         tab2 = TabWidget_RecipeView()
         self.tab.addTab(tab1, "Apply Template")
@@ -289,12 +297,19 @@ class TabWidget_ApplyTemplate(QWidget):
         region1 = region_RecipeChain()
         region2 = region_Modules()
         button_apply = QPushButton("Apply")
+        self.applyTemp = Template_Dialog(self)
+        button_apply.clicked.connect(self.apply_template)
 
         self.main_layout.addWidget(region1, 0, 0, 1, 5)
-        self.main_layout.addWidget(region2, 1, 0, 4, 5)
-        self.main_layout.addWidget(button_apply, 5, 5)
+        self.main_layout.addWidget(region2, 1, 0, 3, 5)
+        self.main_layout.addWidget(button_apply, 4, 4, 1, 1)
+        self.main_layout.setRowStretch(1, 1)
+        self.main_layout.setRowMinimumHeight(0, 180)
 
         self.setLayout(self.main_layout)
+
+    def apply_template(self):
+        self.applyTemp.show()
 
 
 #------> Level 4
@@ -307,13 +322,15 @@ class region_RecipeChain(QScrollArea):
         main_widget = QWidget()
         layout = QHBoxLayout(main_widget)
         layout.setAlignment(Qt.AlignLeft)
+        self.ChainedRecord = []
         for index in range(100):
-            gap = DropLabel(' ')
-            gap.setFixedSize(50,50)
-            gap.setStyleSheet("background-color:white;")
-            layout.addWidget(gap)
+            node = DropLabel(' ')
+            node.setFixedSize(100, 100)
+            node.setStyleSheet("background-color:white;")
+            layout.addWidget(node)
+            self.ChainedRecord.append(node)
         self.setWidget(main_widget)
-        self.setWidgetResizable(True)
+        # self.setWidgetResizable(True)
 
 
 #------> Level 4
@@ -330,7 +347,7 @@ class region_Modules(QScrollArea):
         layout.setAlignment(Qt.AlignLeft)
 
         # Nested loop to create sets of Label + QScrollArea(modules)
-        for topic in ['label a', 'label b', 'label c', 'label d', 'label e', 'label f', 'label g']:  # Read the number of subgroups from config file
+        for topic in ['Label a', 'Label b', 'Label c', 'Label d', 'Label e', 'Label f', 'Label g']:  # Read the number of subgroups from config file
             self.subgroup = QWidget()
             local_layout = QVBoxLayout(self.subgroup)
 
@@ -342,7 +359,8 @@ class region_Modules(QScrollArea):
             module_box_widget = QWidget()
             module_box_layout = QVBoxLayout(module_box_widget)
             for key in range(15):
-                test_label = DraggableLabel(str(key))
+                test_label = DraggableLabel("Module "+str(key))
+                test_label.setMinimumWidth(150)
                 module_box_layout.addWidget(test_label)
             module_box_widget.setLayout(module_box_layout)
             module_box.setWidget(module_box_widget)
@@ -356,9 +374,8 @@ class region_Modules(QScrollArea):
         self.setWidget(MainWidget)
         self.setWidgetResizable(True)
 
-
-# FLOATING OBJ
-class DraggableLabel(QLabel):
+# Draggable Container
+class DraggableLabel(QPushButton):
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             self.drag_start_position = event.pos()
@@ -379,22 +396,111 @@ class DraggableLabel(QLabel):
         drag.setPixmap(pixmap)
         drag.setHotSpot(event.pos())
         drag.exec_(Qt.CopyAction | Qt.MoveAction)
-# FLOATING OBJ
-class DropLabel(QLabel):
+
+# Droppable Container
+class DropLabel(QPushButton):
     def __init__(self, *args, **kwargs):
-        QLabel.__init__(self, *args, **kwargs)
+        QPushButton.__init__(self, *args, **kwargs)
         self.setAcceptDrops(True)
+        self.test_dialog = Test_Dialog(self)
+        self.clicked.connect(self.on_pushButton_clicked)
+
+    def on_pushButton_clicked(self):
+        self.test_dialog.show()
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasText():
             event.acceptProposedAction()
 
     def dropEvent(self, event):
+        ''' This is a section where the container is updated. '''
         pos = event.pos()
         text = event.mimeData().text()
         self.setText(text)
         event.acceptProposedAction()
 
+    def contextMenuEvent(self, event):
+        menu = QMenu(self)
+        menu.setStyleSheet("background-color: gray;")
+        quitAction = menu.addAction("Delete node")
+        action = menu.exec_(self.mapToGlobal(event.pos()))
+        if action == quitAction:
+            self.close()
+
+# Configuration Dialog
+class Test_Dialog(QDialog):
+    def __init__(self, parent=None):
+        super(Test_Dialog, self).__init__(parent)  # have to attach to parent as a child
+                                                   # to make sure the dialog closes  upon main window closes
+        self.setMinimumSize(500, 400)
+        self.setWindowTitle('Test Dialog')
+        lay = QVBoxLayout()
+        wid2 = QWidget()
+        lay2 = QFormLayout()
+
+        lay2.addRow(QLabel("Input 1:"), QLineEdit())  # data to record
+        lay2.addRow(QLabel("Input 2:"), QLineEdit())  # data to record
+        lay2.addRow(QLabel("Input 3:"), QLineEdit())  # data to record
+
+        closebutton = QPushButton("Close")
+        closebutton.clicked.connect(self.dialog_close)
+
+        wid2.setLayout(lay2)
+        lay.addWidget(wid2)
+        lay.addWidget(closebutton)
+        self.setLayout(lay)
+
+    def dialog_close(self):
+        self.close()
+
+# Apply to Samples Dialog
+class Template_Dialog(QDialog):
+    def __init__(self, parent=None):
+        super(Template_Dialog, self).__init__(parent)  # have to attach to parent as a child
+                                                       # to make sure the dialog closes  upon main window closes
+        self.setMinimumSize(500, 400)
+        self.setMinimumSize(500, 1000)
+        self.setWindowTitle('Apply template')
+        lay = QVBoxLayout()
+        label = QLabel("Choose samples below:")
+        lay.addWidget(label)
+
+        scroll_box = QScrollArea()
+        scroll_box_widget = QWidget()
+        scroll_box_layout = QVBoxLayout()
+        self.checkboxes = []
+        checkBoxAll = QCheckBox("Select All / None")
+        checkBoxAll.setChecked(False)
+        checkBoxAll.stateChanged.connect(self.onStateChangePrincipal)
+        scroll_box_layout.addWidget(checkBoxAll)
+        for i in range(50):
+            sample_box = QCheckBox("Sample number 000.00." + str(i))
+            self.checkboxes.append(sample_box)
+            scroll_box_layout.addWidget(sample_box)
+        scroll_box_widget.setLayout(scroll_box_layout)
+        scroll_box.setWidget(scroll_box_widget)
+        lay.addWidget(scroll_box)
+
+        closebutton = QPushButton("Apply Templates")
+        closebutton.clicked.connect(self.dialog_close)
+        lay.addWidget(closebutton)
+        self.setLayout(lay)
+
+    @pyqtSlot(int)
+    def onStateChangePrincipal(self, state):
+        if state == Qt.Checked:
+            for checkbox in self.checkboxes:
+                checkbox.blockSignals(True)
+                checkbox.setCheckState(state)
+                checkbox.blockSignals(False)
+        else:
+            for checkbox in self.checkboxes:
+                checkbox.blockSignals(False)
+                checkbox.setCheckState(state)
+                checkbox.blockSignals(True)
+
+    def dialog_close(self):
+        self.close()
 
 
 #------> Level 4
@@ -404,6 +510,41 @@ class TabWidget_RecipeView(QWidget):
     """
     def __init__(self):
         super(TabWidget_RecipeView, self).__init__()
+
+        self.layout = QHBoxLayout()
+        scroll_box = QScrollArea()
+        main_widget = QWidget()
+        main_layout = QFormLayout()
+
+        # Adding all the sample recipes
+        for i in range(15):
+            main_layout.addRow(QLabel("Sample "+str(i)), RecipeView(i))  # pull the data from log-in info
+        main_widget.setLayout(main_layout)
+        scroll_box.setWidget(main_widget)
+
+        self.layout.addWidget(scroll_box)
+        self.setLayout(self.layout)
+
+
+#------> Level 4 (now copied from region_RecipeChain)
+class RecipeView(QScrollArea):
+    """
+        This constructor creates the region_RecipeChain object for TabWidget_ApplyTemplate.
+        """
+    def __init__(self, *arg):
+        super(RecipeView, self).__init__()
+        main_widget = QWidget()
+        layout = QHBoxLayout(main_widget)
+        layout.setAlignment(Qt.AlignLeft)
+        self.ChainedRecord = []
+        for index in range(10):
+            node = DropLabel(' ')
+            node.setFixedSize(100, 100)
+            node.setStyleSheet("background-color:white;")
+            layout.addWidget(node)
+            self.ChainedRecord.append(node)
+        self.setWidget(main_widget)
+        # self.setWidgetResizable(True)
 
 
 #----> Level 3

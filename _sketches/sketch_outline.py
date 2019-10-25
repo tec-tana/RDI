@@ -1,4 +1,6 @@
 import sys
+import json
+import datafed.CommandLib as datafed
 from PyQt5.QtWidgets import (QPushButton, QDialog, QTreeWidget,
                              QTreeWidgetItem, QVBoxLayout,
                              QHBoxLayout, QFrame, QLabel,
@@ -374,7 +376,7 @@ class region_Modules(QScrollArea):
         self.setWidget(MainWidget)
         self.setWidgetResizable(True)
 
-# Draggable Container
+#~ Draggable Container
 class DraggableLabel(QPushButton):
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
@@ -397,7 +399,7 @@ class DraggableLabel(QPushButton):
         drag.setHotSpot(event.pos())
         drag.exec_(Qt.CopyAction | Qt.MoveAction)
 
-# Droppable Container
+#~ Droppable Container
 class DropLabel(QPushButton):
     def __init__(self, *args, **kwargs):
         QPushButton.__init__(self, *args, **kwargs)
@@ -427,7 +429,7 @@ class DropLabel(QPushButton):
         if action == quitAction:
             self.close()
 
-# Configuration Dialog
+#~ Configuration Dialog
 class Test_Dialog(QDialog):
     def __init__(self, parent=None):
         super(Test_Dialog, self).__init__(parent)  # have to attach to parent as a child
@@ -453,7 +455,7 @@ class Test_Dialog(QDialog):
     def dialog_close(self):
         self.close()
 
-# Apply to Samples Dialog
+#~ Apply to Samples Dialog
 class Template_Dialog(QDialog):
     def __init__(self, parent=None):
         super(Template_Dialog, self).__init__(parent)  # have to attach to parent as a child
@@ -511,7 +513,7 @@ class TabWidget_RecipeView(QWidget):
     def __init__(self):
         super(TabWidget_RecipeView, self).__init__()
 
-        self.layout = QHBoxLayout()
+        self.layout = QVBoxLayout()
         scroll_box = QScrollArea()
         main_widget = QWidget()
         main_layout = QFormLayout()
@@ -526,7 +528,7 @@ class TabWidget_RecipeView(QWidget):
         self.setLayout(self.layout)
 
 
-#------> Level 4 (now copied from region_RecipeChain)
+#~ Indv Recipe Container (now copied from region_RecipeChain)
 class RecipeView(QScrollArea):
     """
         This constructor creates the region_RecipeChain object for TabWidget_ApplyTemplate.
@@ -554,6 +556,68 @@ class PageWidget_Analysis(QWidget):
     """
     def __init__(self):
         super(PageWidget_Analysis, self).__init__()
+        self.main_layout = QVBoxLayout(self)
+
+        # Widget 1: Stacked Pages
+        self.stackpages = QStackedWidget()
+        # self.stackpages.setStyleSheet("background-color: white;")
+        page1 = PageWidget_Analysis.StackWidget_ActView(self)
+        page2 = PageWidget_Analysis.StackWidget_ActMod(self)   # this is a blank widget that will take on a QWidget
+                            # object called by clicking on an activity node
+        self.stackpages.addWidget(page1)
+        self.stackpages.addWidget(page2)
+
+        self.main_layout.addWidget(self.stackpages)
+        self.setLayout(self.main_layout)
+
+
+#------> Level 4
+    class StackWidget_ActView(TabWidget_RecipeView):
+        def __init__(self, outer):
+            super(PageWidget_Analysis.StackWidget_ActView, self).__init__()
+
+            self.outer = outer
+
+            test_button = QPushButton("test button")
+            test_button.clicked.connect(self.testpage)
+
+            self.layout.addWidget(test_button)
+            self.setLayout(self.layout)
+
+        def testpage(self):
+            # Accessing outer class from inner class
+            # read more here: https://stackoverflow.com/questions/2024566/access-outer-class-from-inner-class-in-python
+            self.outer.stackpages.setCurrentIndex(1)
+
+
+    #------> Level 4
+    class StackWidget_ActMod(QWidget):
+        def __init__(self, outer):
+            super(PageWidget_Analysis.StackWidget_ActMod, self).__init__()
+
+            self.outer = outer
+
+
+            #TODO: Creating the object to take care of the node that was clicked
+            # (1) Clicking a node = list samples. Later: grouped by identical setting/experiment run
+            # (2) Clicking the specific sample = switch page & signal to generate service object
+            # (3) Service object generated & register on the page
+            # (3.1) Service object sends data back to datafed
+            # (3.2) Service object closes & object destroy object.__del__(self)
+            # (3.3) Service object under __del__ returns page to browser
+
+            self.main_layout = QVBoxLayout()
+            return_button = QPushButton("return")
+            return_button.clicked.connect(self.returnpage)
+
+
+
+
+            self.main_layout.addWidget(return_button)
+            self.setLayout(self.main_layout)
+
+        def returnpage(self):
+            self.outer.stackpages.setCurrentIndex(0)
 
 
 #----> Level 3
@@ -563,8 +627,6 @@ class PageWidget_ML(QWidget):
     """
     def __init__(self):
         super(PageWidget_ML, self).__init__()
-
-
 
 
 """

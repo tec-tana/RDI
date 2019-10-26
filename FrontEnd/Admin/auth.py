@@ -1,5 +1,6 @@
 from PyQt5 import QtWidgets
 from datafed.CommandLib import loginByPassword, loginByToken
+from config import cfg
 
 class authDialog(QtWidgets.QApplication):
     def __init__(self):
@@ -7,11 +8,15 @@ class authDialog(QtWidgets.QApplication):
         super(authDialog, self).__init__(sys.argv)
         login = Login()
         login.show()
-        sys.exit(self.exec_())
+        self.exec_()  # execute the dialogue
 
 class Login(QtWidgets.QDialog):
     def __init__(self, parent=None):
         super(Login, self).__init__(parent)
+        layout = QtWidgets.QVBoxLayout(self)
+        authreg = QtWidgets.QWidget()
+        formlayout = QtWidgets.QFormLayout(self)
+
         title_ID = QtWidgets.QLabel('User ID')
         title_pass = QtWidgets.QLabel('Password')
         self.textName = QtWidgets.QLineEdit(self)
@@ -19,16 +24,22 @@ class Login(QtWidgets.QDialog):
         self.textPass.setEchoMode(QtWidgets.QLineEdit.Password)
         self.buttonLogin = QtWidgets.QPushButton('Login', self)
         self.buttonLogin.clicked.connect(self.handleLogin)
-        layout = QtWidgets.QFormLayout(self)
-        layout.addRow(self.textName)
-        layout.addWidget(self.textPass)
+
+        formlayout.addRow(title_ID, self.textName)
+        formlayout.addRow(title_pass, self.textPass)
+        authreg.setLayout(formlayout)
+
+        layout.addWidget(authreg)
         layout.addWidget(self.buttonLogin)
+        self.setLayout(layout)
 
     def handleLogin(self):
         try:
             loginByPassword(self.textName.text(), self.textPass.text())
             QtWidgets.QMessageBox.information(self, 'Welcome', 'Log-in Success!')
-            sys.exit(app.exec_())  # closing dialogue after successful log-in
+            cfg.user.addUser(self.textName.text())
+            cfg.isConnected = True
+            self.close()  # closing dialogue after successful log-in
         except Exception as e:
             QtWidgets.QMessageBox.warning(self, 'Error', str(e))
 

@@ -114,7 +114,7 @@ class region_Modules(QScrollArea):
         # Nested loop to create sets of Label + QScrollArea(modules)
         for topic in activities['category']:  # Read the number of subgroups from config file
             klr = colors.pop()
-            print(klr)
+            #print(klr)  # print rgb combination (255,255,255)
             self.subgroup = QWidget()
             local_layout = QVBoxLayout(self.subgroup)
 

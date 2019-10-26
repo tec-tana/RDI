@@ -7,6 +7,7 @@ from PyQt5.QtWidgets import (QPushButton, QVBoxLayout, QHBoxLayout, QLabel, QApp
 from ProjectClass.rcpmngr import PageWidget_RcpMngr
 from ProjectClass.analysis import PageWidget_Analysis
 from ProjectClass.ml import PageWidget_ML
+from config import cfg
 
 
 """---- class definition ----"""
@@ -72,6 +73,8 @@ class MainWindow(QMainWindow):
         exitButton = QAction(QIcon('exit24.png'), 'Action', self)
         exitButton.setStatusTip('')
         self.helpMenu.addAction(exitButton)
+
+
 # central widget to host all page widgets
 class CentralWidget(QWidget):
     """
@@ -102,6 +105,8 @@ class CentralWidget(QWidget):
         self.stackpages.addWidget(page2)
         self.stackpages.addWidget(page3)
 
+        cfg.mainpagestack = self.stackpages
+
         # self.splitter.addWidget(self.sidebarwidget)
         # self.splitter.addWidget(self.stackpages)
         # self.splitter.setMinimumWidth(50)
@@ -112,7 +117,7 @@ class CentralWidget(QWidget):
         self.setLayout(self.main_layout)
 
 
-#----> Level 3
+    #----> Level 3
     class SidebarWidget(QWidget):
         """
         This constructor creates the layout for Side Bar.
@@ -152,13 +157,35 @@ class CentralWidget(QWidget):
 
             self.main_layout = QFormLayout(self)
 
+            # Creating widgets + connect actions
+            self.user = QLabel()
+            self.project = QComboBox()
+            self.doi = QComboBox()
+            self.project.activated.connect(self.updateBrowser)
+            self.doi.activated.connect(self.updateDOI)
+
             # Widget 1: File Browser
-            self.main_layout.addRow(QLabel("User:"), QLabel("Username"))  # pull the data from log-in info
-            self.main_layout.addRow(QLabel("Project:"), QComboBox())  # pull the data from log-in info
-            self.main_layout.addRow(QLabel("DOI:"), QComboBox())  # pull the data from log-in info
+            self.main_layout.addRow(QLabel("User:"), self.user)  # pull the data from log-in info
+            self.main_layout.addRow(QLabel("Project:"), self.project)  # pull the data from log-in info
+            self.main_layout.addRow(QLabel("DOI:"), self.doi)  # pull the data from log-in info
 
             self.setLayout(self.main_layout)
 
+            self.updateBrowser()
+
+        def updateBrowser(self, coll:str=''):
+            import datafed.CommandLib as datafed
+            from google.protobuf.json_format import MessageToDict
+            self.user.setText(cfg.user._userinfo['name'])
+            self.project.addItems([w['title'] for w in cfg.user._userinfo['ownership']['item'][:]])
+
+            #TODO: Figure out how to extract files in each collection. coll view does not give info.
+            #if self.project.currentText():
+            #   coll = str(self.project.currentText())
+            #   self.doi.addItems([w[] for w in MessageToDict(datafed.command('coll view'+coll)[0])])
+
+        def updateDOI(self):
+            cfg.currentDOI = self.doi.currentText()
 
     #------> Level 4
     class PageTogglerWidget(QWidget):
@@ -181,14 +208,12 @@ class CentralWidget(QWidget):
             # Group button to manage states
             self.btn_grp = QButtonGroup()
             self.btn_grp.setExclusive(True)
-            self.btn_grp.addButton(self.button_Login)
             self.btn_grp.addButton(self.button_RcpMngr)
             self.btn_grp.addButton(self.button_Analysis)
             self.btn_grp.addButton(self.button_ML)
             self.btn_grp.buttonClicked.connect(self.toggle)
 
             # Adding buttons to layout
-            layout_toggle.addWidget(self.button_Login)
             layout_toggle.addWidget(self.button_RcpMngr)
             layout_toggle.addWidget(self.button_Analysis)
             layout_toggle.addWidget(self.button_ML)
@@ -197,20 +222,38 @@ class CentralWidget(QWidget):
 
         def toggle(self, btn):
             # Insert a clause here if the user has not logged-in
-            buttonList = {"Log-in":0, "Recipe Manager":1, "Data Viewer":2, "ML Study":3}
+            buttonList = {"Recipe Manager":0, "Data Viewer":1, "ML Study":2}
             buttonNum = buttonList.get(btn.text())  # Return assigned number
             self.clear_color()
             btn.setStyleSheet("background-color: Green;")
 
-            # Have to fix the dependency here. This may become difficult to deal with later.
-            main_widget.stackpages.setCurrentIndex(buttonNum)
+            # Right now, I'm assigning stackpages in the outer class to cfg
+            #   but nested classes are not often practiced cuz they do not imply
+            #   any particular relationship between inner and outer class.
+            cfg.mainpagestack.setCurrentIndex(buttonNum)
             pass
 
         def clear_color(self):
-            self.button_Login.setStyleSheet("background-color: white;")
             self.button_RcpMngr.setStyleSheet("background-color: white;")
             self.button_Analysis.setStyleSheet("background-color: white;")
             self.button_ML.setStyleSheet("background-color: white;")
+
+
+class mainUI(QApplication):
+    def __init__(self):
+        import sys
+        super(mainUI, self).__init__(sys.argv)
+        self.setApplicationName("ML-ALD Data Interface")
+        self.setStyle(QStyleFactory.create('Fusion'))
+        # Initiate Main Window
+        window = MainWindow()
+        # Attach CentralWidget
+        main_widget = CentralWidget()
+        window.setCentralWidget(main_widget)
+        # Show window
+        window.show()
+        self.exec_()
+
 
 
 """---- main program ----"""

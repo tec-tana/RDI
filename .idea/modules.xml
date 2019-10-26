@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/nhi-datacollection-ald.iml" filepath="$PROJECT_DIR$/.idea/nhi-datacollection-ald.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/NHI_DataCollection_Strandwitz.iml" filepath="$PROJECT_DIR$/.idea/NHI_DataCollection_Strandwitz.iml" />
     </modules>
   </component>
 </project>

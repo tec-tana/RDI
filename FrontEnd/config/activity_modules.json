@@ -1,0 +1,59 @@
+{
+  "config": "activity modules",
+  "version": "0.0.1",
+  "category": [
+    {
+      "name": "pre-deposition",
+      "module": [
+        {
+          "name": "RCA1-Clean",
+          "parameter": ["temperature", "time", "composition"]
+        },
+        {
+          "name": "RCA2-Clean",
+          "parameter": ["temperature", "time", "composition"]
+        },
+        {
+          "name": "HF-Clean",
+          "parameter": ["temperature", "time", "composition"]
+        }
+      ]
+    },
+
+    {
+      "name": "film-synthesis",
+      "module": [
+        {
+          "name": "ALD_Savannah",
+          "parameter": ["heater", "pressure", "RF", "insitu", "recipe", "precursor"]
+        },
+        {
+          "name": "ALD_Apollo",
+          "parameter": ["heater", "pressure", "RF", "insitu", "recipe", "precursor"]
+        },
+        {
+          "name": "MLD_Stacey",
+          "parameter": ["heater", "pressure", "RF", "insitu", "recipe", "precursor"]
+        }
+      ]
+    },
+
+    {
+      "name": "post-deposition",
+      "module": [
+        {
+          "name": "Denton-evaporator",
+          "parameter": ["material", "thickness", "pressure"]
+        },
+        {
+          "name": "In-Ga_contact",
+          "parameter": []
+        },
+        {
+          "name": "silver_contact",
+          "parameter": []
+        }
+      ]
+    }
+  ]
+}

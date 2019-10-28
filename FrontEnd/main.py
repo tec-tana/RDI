@@ -15,9 +15,7 @@ if __name__ == '__main__':
     if cfg.isConnected is False: exit()  # exit if authentication was bypassed
     else:
         try:
-            # reply from datafed is protobuf, have to convert to dict
-            from google.protobuf.json_format import MessageToDict
-            cfg.user._userinfo['ownership'] = MessageToDict(datafed.command('ls')[0])
+            cfg.user.update_ownership()  # update project and collection owned by the user
         except Exception as e:
             from tkinter import messagebox
             messagebox.showerror("Error", str(e))

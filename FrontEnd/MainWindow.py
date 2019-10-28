@@ -1,8 +1,8 @@
 # import standard libraries
 import sys
-from PyQt5.QtGui import (QIcon,)
+from PyQt5.QtGui import (QIcon, )
 from PyQt5.QtWidgets import (QPushButton, QVBoxLayout, QHBoxLayout, QLabel, QApplication, QStyleFactory, QMainWindow, QAction,
-                             QWidget, QStackedWidget, QComboBox, QGroupBox, QFormLayout, QButtonGroup,)
+                             QWidget, QStackedWidget, QComboBox, QGroupBox, QFormLayout, QButtonGroup, QDialog, QLineEdit)
 # import local constructs
 from ProjectClass.rcpmngr import PageWidget_RcpMngr
 from ProjectClass.analysis import PageWidget_Analysis
@@ -157,35 +157,112 @@ class CentralWidget(QWidget):
 
             self.main_layout = QFormLayout(self)
 
-            # Creating widgets + connect actions
+            # Creating widgets + connect signals
             self.user = QLabel()
             self.project = QComboBox()
             self.doi = QComboBox()
-            self.project.activated.connect(self.updateBrowser)
-            self.doi.activated.connect(self.updateDOI)
+            self.project.activated.connect(self.updateDOI)
+            self.doi.activated.connect(self.loadDOI)
+            self.new_DOI = QPushButton("Add new DOI")  # New DOI per collections of samples.
+            self.new_DOI.clicked.connect(self.add_DOI)  # A collection could be intepret as an experiment.
+
+            # Load initial ownership data (project & collection)
+            self.user.setText(cfg.user._userinfo['name'])
 
             # Widget 1: File Browser
-            self.main_layout.addRow(QLabel("User:"), self.user)  # pull the data from log-in info
-            self.main_layout.addRow(QLabel("Project:"), self.project)  # pull the data from log-in info
-            self.main_layout.addRow(QLabel("DOI:"), self.doi)  # pull the data from log-in info
+            self.main_layout.addRow(QLabel("User:"), self.user)  # user ID logged-in
+            self.main_layout.addRow(QLabel("Project:"), self.project)  # this is project in datafed
+            self.main_layout.addRow(QLabel("DOI:"), self.doi)  # this is collection in datafed
+            self.main_layout.addRow(self.new_DOI)
 
             self.setLayout(self.main_layout)
 
-            self.updateBrowser()
+            self.updateProject()
 
-        def updateBrowser(self, coll:str=''):
-            import datafed.CommandLib as datafed
-            from google.protobuf.json_format import MessageToDict
-            self.user.setText(cfg.user._userinfo['name'])
-            self.project.addItems([w['title'] for w in cfg.user._userinfo['ownership']['item'][:]])
+        def updateProject(self):
+            """
+            update projects owned to the project dropdown
+            activated first time after log-in
+            """
+            cfg.user.update_ownership()  # update project ownership
+            #TODO: Figure out how to list projects
+            #self.project.addItems([w[''] for w in cfg.user._userinfo['project']['item'][:]])
 
-            #TODO: Figure out how to extract files in each collection. coll view does not give info.
-            #if self.project.currentText():
-            #   coll = str(self.project.currentText())
-            #   self.doi.addItems([w[] for w in MessageToDict(datafed.command('coll view'+coll)[0])])
 
         def updateDOI(self):
+            """
+            filter DOI associated with selected in project tab
+            activates when project dropdown was selected
+            """
+            #TODO: Figure out how to filter DOI/coll by project
+            cfg.currentDOI = self.project.currentText()
+            #if self.project.currentText():
+            #   coll = str(self.project.currentText())
+            #   self.doi.addItems([w[''] for w in MessageToDict(datafed.command('coll view'+coll)[0])])
+
+        def loadDOI(self):
+            """
+            updates data to analyze according to DOI/coll selected
+            activates when DOI dropdown was selected
+            """
+            #TODO: Figure out how to extract files in each collection. coll view does not give info.
             cfg.currentDOI = self.doi.currentText()
+
+        def add_DOI(self):
+            """
+            add new DOI to the project
+            """
+            print("This function is not yet supported. "
+                  "You can add new DOI to project or data to DOI "
+                  "by going to https://datafed.ornl.gov. ")
+            self.gen_DOI = self.generate_DOI(self)
+            self.gen_DOI.show()
+
+        # ~ Configuration Dialog
+        class generate_DOI(QDialog):
+            def __init__(self, parent=None):
+                super(CentralWidget.FileBrowserWidget.generate_DOI, self).__init__(parent)
+                # to make sure the dialog closes  upon main window closes
+                self.setMinimumSize(500, 400)
+                self.setWindowTitle('Add New DOI')
+                lay = QVBoxLayout()
+                wid2 = QWidget()
+                lay2 = QFormLayout()
+
+                # Create widgets
+                self.id = QLabel("00.0.000.1")
+                self.alias = QLineEdit()
+                self.project = QComboBox()  #TODO: Figure out how to list projects
+
+                lay2.addRow(QLabel("DOI#:"), self.id)  # auto-generated collection ID
+                lay2.addRow(QLabel("DOI Alias:"), self.alias)  # human-readable collection name
+                lay2.addRow(QLabel("Project:"), self.project)  # project DOI is linked under
+
+                savebutton = QPushButton("Save")
+                savebutton.clicked.connect(self.add_DOI)
+                closebutton = QPushButton("Cancel")
+                closebutton.clicked.connect(self.dialog_close)
+
+                wid2.setLayout(lay2)
+                lay.addWidget(wid2)
+                lay.addWidget(savebutton)
+                lay.addWidget(closebutton)
+                self.setLayout(lay)
+
+            def dialog_close(self):
+                self.close()
+
+            def add_DOI(self):
+                """
+                execute add_coll at config
+                """
+                try:
+                    cfg.user.add_coll(id=self.id.text(),
+                                      alias=self.alias.text(),
+                                      project=self.project.currentText())
+                except Exception as e:
+                    print(str(e))
+
 
     #------> Level 4
     class PageTogglerWidget(QWidget):
@@ -253,7 +330,6 @@ class mainUI(QApplication):
         # Show window
         window.show()
         self.exec_()
-
 
 
 """---- main program ----"""

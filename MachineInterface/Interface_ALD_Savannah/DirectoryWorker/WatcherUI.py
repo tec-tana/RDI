@@ -6,7 +6,7 @@ import tkinter as tk
 import queue
 import datetime as dt
 # import local modules
-import cfg
+from config import cfg
 
 # setting flag for thread worker
 is_running = True

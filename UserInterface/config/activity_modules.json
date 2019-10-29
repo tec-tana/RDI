@@ -7,15 +7,18 @@
       "module": [
         {
           "name": "RCA1-Clean",
-          "parameter": ["temperature", "time", "composition"]
+          "parameter": ["temperature", "time", "composition"],
+          "config": {}
         },
         {
           "name": "RCA2-Clean",
-          "parameter": ["temperature", "time", "composition"]
+          "parameter": ["temperature", "time", "composition"],
+          "config": {}
         },
         {
           "name": "HF-Clean",
-          "parameter": ["temperature", "time", "composition"]
+          "parameter": ["temperature", "time", "composition"],
+          "config": {}
         }
       ]
     },
@@ -25,15 +28,18 @@
       "module": [
         {
           "name": "ALD_Savannah",
-          "parameter": ["heater", "pressure", "RF", "insitu", "recipe", "precursor"]
+          "parameter": ["heater", "pressure", "RF", "insitu", "recipe", "precursor"],
+          "config": {}
         },
         {
           "name": "ALD_Apollo",
-          "parameter": ["heater", "pressure", "RF", "insitu", "recipe", "precursor"]
+          "parameter": ["heater", "pressure", "RF", "insitu", "recipe", "precursor"],
+          "config": {}
         },
         {
           "name": "MLD_Stacey",
-          "parameter": ["heater", "pressure", "RF", "insitu", "recipe", "precursor"]
+          "parameter": ["heater", "pressure", "RF", "insitu", "recipe", "precursor"],
+          "config": {}
         }
       ]
     },
@@ -43,15 +49,18 @@
       "module": [
         {
           "name": "Denton-evaporator",
-          "parameter": ["material", "thickness", "pressure"]
+          "parameter": ["material", "thickness", "pressure"],
+          "config": {}
         },
         {
           "name": "In-Ga_contact",
-          "parameter": []
+          "parameter": [],
+          "config": {}
         },
         {
           "name": "silver_contact",
-          "parameter": []
+          "parameter": [],
+          "config": {}
         }
       ]
     }

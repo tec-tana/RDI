@@ -35,7 +35,10 @@ class Login(QtWidgets.QDialog):
 
     def handleLogin(self):
         try:
-            loginByPassword(self.textName.text(), self.textPass.text())
+            if cfg.dev_user:  # for dev purposes
+                self.textName.setText(cfg.dev_user[0])
+                self.textPass.setText(cfg.dev_user[1])
+            loginByPassword(str(self.textName.text()), str(self.textPass.text()))
             QtWidgets.QMessageBox.information(self, 'Welcome', 'Log-in Success!')
             cfg.user.addUser(self.textName.text())
             cfg.isConnected = True

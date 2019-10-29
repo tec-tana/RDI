@@ -15,7 +15,7 @@ import threading
 import queue
 import datetime as dt
 # import local modules
-import cfg
+from config import cfg
 from DirectoryWorker import FileProcess
 
 
@@ -44,8 +44,7 @@ class SignalWatch:
                                          None,
                                          win32con.OPEN_EXISTING,
                                          win32con.FILE_FLAG_BACKUP_SEMANTICS,
-                                         None
-                                         )
+                                         None)
         # Set up the thread for watcher
         thread_watcher = threading.Thread(target=self.watcher_thread)
         thread_watcher.daemon = True  # daemon thread dies when main thread exits, to combat with blocking thread

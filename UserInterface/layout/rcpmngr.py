@@ -405,7 +405,7 @@ class RecipeView(QWidget):
     """
         This constructor creates the region_RecipeChain object for TabWidget_ApplyTemplate.
     """
-    initRecord = 50
+    initRecord = 10
     def __init__(self, *arg):
         super(RecipeView, self).__init__()
         self.main_layout = QHBoxLayout()

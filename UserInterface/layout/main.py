@@ -1,14 +1,34 @@
 # import standard libraries
 import sys
-from PyQt5.QtGui import (QIcon, )
-from PyQt5.QtWidgets import (QPushButton, QVBoxLayout, QHBoxLayout, QLabel, QApplication, QStyleFactory, QMainWindow, QAction,
-                             QWidget, QStackedWidget, QComboBox, QGroupBox, QFormLayout, QButtonGroup, QDialog, QLineEdit)
+from PyQt5.QtGui import (QIcon, QRegExpValidator)
+from PyQt5.QtCore import (Qt, QRegExp)
+from PyQt5.QtWidgets import (QPushButton, QVBoxLayout, QHBoxLayout, QLabel, QApplication,
+                             QStyleFactory, QMainWindow, QAction, QWidget, QStackedWidget,
+                             QComboBox, QGroupBox, QFormLayout, QButtonGroup, QDialog,
+                             QLineEdit, QTextEdit)
 # import local constructs
-from ProjectClass.rcpmngr import PageWidget_RcpMngr
-from ProjectClass.analysis import PageWidget_Analysis
-from ProjectClass.ml import PageWidget_ML
+from layout.rcpmngr import PageWidget_RcpMngr
+from layout.analysis import PageWidget_Analysis
+from layout.ml import PageWidget_ML
 from config import cfg
 
+
+"""---- main program ----"""
+
+class UI(QApplication):
+    def __init__(self):
+        import sys
+        super(UI, self).__init__(sys.argv)
+        self.setApplicationName("ML-ALD Data Interface")
+        self.setStyle(QStyleFactory.create('Fusion'))
+        # Initiate Main Window
+        window = MainWindow()
+        # Attach CentralWidget
+        main_widget = CentralWidget()
+        window.setCentralWidget(main_widget)
+        # Show window
+        window.show()
+        self.exec_()
 
 """---- class definition ----"""
 
@@ -161,44 +181,61 @@ class CentralWidget(QWidget):
             self.user = QLabel()
             self.project = QComboBox()
             self.doi = QComboBox()
-            self.project.activated.connect(self.updateDOI)
-            self.doi.activated.connect(self.loadDOI)
+            self.doi.setEnabled(0)  # must first select the project
+            self.info = QLabel()
+            self.load = QPushButton("Load Data")
             self.new_DOI = QPushButton("Add new DOI")  # New DOI per collections of samples.
+            self.project.activated.connect(self.refreshDOI)
+            self.load.clicked.connect(self.loadDOI)
             self.new_DOI.clicked.connect(self.add_DOI)  # A collection could be intepret as an experiment.
 
             # Load initial ownership data (project & collection)
             self.user.setText(cfg.user._userinfo['name'])
 
             # Widget 1: File Browser
+            #TODO: right now this structure only assumes 1-layer DOI/Collection.
+            # However, each collection can have sub-collections. This layout doesn't yet allow that
             self.main_layout.addRow(QLabel("User:"), self.user)  # user ID logged-in
             self.main_layout.addRow(QLabel("Project:"), self.project)  # this is project in datafed
             self.main_layout.addRow(QLabel("DOI:"), self.doi)  # this is collection in datafed
+            self.main_layout.addRow(self.info)
+            self.main_layout.addRow(self.load)
             self.main_layout.addRow(self.new_DOI)
 
             self.setLayout(self.main_layout)
 
-            self.updateProject()
+            self.refreshProject()
 
-        def updateProject(self):
+        def refreshProject(self):
             """
             update projects owned to the project dropdown
             activated first time after log-in
             """
             cfg.user.update_ownership()  # update project ownership
-            #TODO: Figure out how to list projects
-            #self.project.addItems([w[''] for w in cfg.user._userinfo['project']['item'][:]])
+            self.project.addItems(cfg.user.list_coll_title())
+            self.info.setText("Choose a project")
+            self.info.setStyleSheet("color:green")
+            self.info.setAlignment(Qt.AlignCenter)
 
 
-        def updateDOI(self):
+        def refreshDOI(self):
             """
             filter DOI associated with selected in project tab
             activates when project dropdown was selected
             """
-            #TODO: Figure out how to filter DOI/coll by project
-            cfg.currentDOI = self.project.currentText()
-            #if self.project.currentText():
-            #   coll = str(self.project.currentText())
-            #   self.doi.addItems([w[''] for w in MessageToDict(datafed.command('coll view'+coll)[0])])
+            coll_id = cfg.user.list_coll_id()[self.project.currentIndex()]
+            cfg.experiment.update_doi(coll_id)
+            self.doi.clear()  # clear container before updating
+            if cfg.experiment.list_doi_title() == None:
+                self.info.setText("Empty Collection!\nNo DOI found within this collection.")
+                self.info.setStyleSheet("color:red")
+                self.info.setAlignment(Qt.AlignCenter)
+                self.doi.setEnabled(0)  # disable dropdown box
+                return
+            else:
+                self.info.setText("")
+                self.doi.setEnabled(1)  # enable dropdown box
+                self.doi.addItems(cfg.experiment.list_doi_title())
 
         def loadDOI(self):
             """
@@ -212,9 +249,6 @@ class CentralWidget(QWidget):
             """
             add new DOI to the project
             """
-            print("This function is not yet supported. "
-                  "You can add new DOI to project or data to DOI "
-                  "by going to https://datafed.ornl.gov. ")
             self.gen_DOI = self.generate_DOI(self)
             self.gen_DOI.show()
 
@@ -222,6 +256,7 @@ class CentralWidget(QWidget):
         class generate_DOI(QDialog):
             def __init__(self, parent=None):
                 super(CentralWidget.FileBrowserWidget.generate_DOI, self).__init__(parent)
+
                 # to make sure the dialog closes  upon main window closes
                 self.setMinimumSize(500, 400)
                 self.setWindowTitle('Add New DOI')
@@ -230,14 +265,39 @@ class CentralWidget(QWidget):
                 lay2 = QFormLayout()
 
                 # Create widgets
-                self.id = QLabel("00.0.000.1")
+                #self.id = QLabel("00.0.000.1")  # some arbitrary number for show
+                #lay2.addRow(QLabel("DOI#:"), self.id)  # auto-generated collection ID
+                self.title = QLineEdit()
+                lay2.addRow(QLabel("DOI title:"), self.title)  # human-readable collection name
                 self.alias = QLineEdit()
-                self.project = QComboBox()  #TODO: Figure out how to list projects
+                lay2.addRow(QLabel("DOI alias:"), self.alias)  # human-readable collection name
 
-                lay2.addRow(QLabel("DOI#:"), self.id)  # auto-generated collection ID
-                lay2.addRow(QLabel("DOI Alias:"), self.alias)  # human-readable collection name
-                lay2.addRow(QLabel("Project:"), self.project)  # project DOI is linked under
+                # set validator for input
+                reg_ex = QRegExp("^\\S+$")  # matching strings without whitespace
+                title_validator = QRegExpValidator(reg_ex, self.title)
+                alias_validator = QRegExpValidator(reg_ex, self.alias)
+                self.title.setValidator(title_validator)
+                self.alias.setValidator(alias_validator)
 
+                try:
+                    self.coll = QComboBox()  # TODO: Figure out how to list projects
+                    self.coll.addItems([item['title'] for item in cfg.user._userinfo['coll']['item']])
+                    lay2.addRow(QLabel("Collection:"), self.coll)  # project DOI is linked under
+                except Exception as e:
+                    #print(e)
+                    pass  # disable dropdown if no project exist
+                try:
+                    self.project = QComboBox()  # TODO: Figure out how to list projects
+                    self.project.addItems([item['title'] for item in cfg.user._userinfo['project']['item']])
+                    lay2.addRow(QLabel("Project:"), self.project)  # project DOI is linked under
+                except Exception as e:
+                    #print(e)
+                    pass  # disable dropdown if no project exist
+
+                self.dscrpt = QTextEdit()
+                self.dscrpt.setPlaceholderText("Put your description here")
+
+                self.warning = QLabel()
                 savebutton = QPushButton("Save")
                 savebutton.clicked.connect(self.add_DOI)
                 closebutton = QPushButton("Cancel")
@@ -245,6 +305,8 @@ class CentralWidget(QWidget):
 
                 wid2.setLayout(lay2)
                 lay.addWidget(wid2)
+                lay.addWidget(self.dscrpt)
+                lay.addWidget(self.warning)
                 lay.addWidget(savebutton)
                 lay.addWidget(closebutton)
                 self.setLayout(lay)
@@ -255,13 +317,26 @@ class CentralWidget(QWidget):
             def add_DOI(self):
                 """
                 execute add_coll at config
+                buffer to check validity of input
                 """
                 try:
-                    cfg.user.add_coll(id=self.id.text(),
+                    #TODO: right now, if coll/project not specified, it will be added to root collection
+                    # which is probably ok. But the Qdropdown has to show nothing as initial value if it
+                    # hasn't been selected. Otherwise, this will cause confusion to users.
+                    cfg.user.add_coll(title=self.title.text(),
                                       alias=self.alias.text(),
-                                      project=self.project.currentText())
+                                      coll=cfg.user.list_coll_id(self.coll.currentIndex()),
+                                      project=cfg.user.list_project_id(self.project.currentIndex()),
+                                      dcrpt=self.dscrpt.toPlainText())
+                    self.warning.setText("")
+                    self.close()
+                    #TODO: figure out how to pythonically show this message when file is created on database.
+                    print('Filename \"'+self.title.text()+'\" is added to database')
                 except Exception as e:
-                    print(str(e))
+                    self.warning.setText(str(e))
+                    self.warning.setStyleSheet("color:red")
+                    self.warning.setAlignment(Qt.AlignCenter)
+
 
 
     #------> Level 4
@@ -316,23 +391,9 @@ class CentralWidget(QWidget):
             self.button_ML.setStyleSheet("background-color: white;")
 
 
-class mainUI(QApplication):
-    def __init__(self):
-        import sys
-        super(mainUI, self).__init__(sys.argv)
-        self.setApplicationName("ML-ALD Data Interface")
-        self.setStyle(QStyleFactory.create('Fusion'))
-        # Initiate Main Window
-        window = MainWindow()
-        # Attach CentralWidget
-        main_widget = CentralWidget()
-        window.setCentralWidget(main_widget)
-        # Show window
-        window.show()
-        self.exec_()
 
 
-"""---- main program ----"""
+"""---- test program ----"""
 
 if __name__ == "__main__":
     # Start Application
